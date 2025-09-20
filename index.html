@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>贪吃蛇小游戏</title>
+    <style>
+      body {
+        display: flex;
+        margin: 0;
+        font-family: Arial, sans-serif;
+      }
+      #game-container {
+        position: relative;
+        width: 1200px;
+        height: 900px;
+        background-color: #f0f0f0;
+        border: 2px solid #000;
+        overflow: hidden;
+      }
+      #score-board {
+        width: 200px;
+        padding: 20px;
+        background-color: #ddd;
+        border-right: 2px solid #000;
+      }
+      .snake-segment,
+      .food {
+        position: absolute;
+        width: 50px;
+        height: 50px;
+        background-size: cover;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="score-board">
+      <h2>得分</h2>
+      <p id="score">0</p>
+    </div>
+    <div id="game-container"></div>
+    <div id="controls">
+      <button id="pause-btn">暂停</button>
+      <button id="resume-btn">继续</button>
+      <audio id="game-music" loop>
+        <source src="../前端图片文件/哈基米音乐.mp3" type="audio/mpeg" />
+        您的浏览器不支持音频元素。
+      </audio>
+      <button id="music-btn">游戏音乐</button>
+      <div id="mobile-controls" style="display: none">
+        <button id="up-btn">↑</button>
+        <button id="left-btn">←</button>
+        <button id="right-btn">→</button>
+        <button id="down-btn">↓</button>
+      </div>
+    </div>
+    <style>
+      #controls {
+        margin-top: 10px;
+      }
+      #mobile-controls {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 10px;
+      }
+      #mobile-controls button {
+        width: 50px;
+        height: 50px;
+        font-size: 18px;
+      }
+      .snake-segment {
+        width: 50px; /* 再调大蛇的身子 */
+        height: 50px;
+      }
+      .food {
+        width: 50px; /* 再调大食物 */
+        height: 50px;
+      }
+    </style>
+
+    <script>
+      // DOM 元素
+      const pauseBtn = document.getElementById("pause-btn");
+      const resumeBtn = document.getElementById("resume-btn");
+      const gameMusic = document.getElementById("game-music");
+      const mobileControls = document.getElementById("mobile-controls");
+      const upBtn = document.getElementById("up-btn");
+      const downBtn = document.getElementById("down-btn");
+      const leftBtn = document.getElementById("left-btn");
+      const rightBtn = document.getElementById("right-btn");
+      const gameContainer = document.getElementById("game-container");
+      const scoreElement = document.getElementById("score");
+
+      // 配置
+      const SNAKE_SIZE = 50; // 步长和尺寸统一（蛇和食物都为50px）
+      // 音乐按钮事件
+      const musicBtn = document.getElementById("music-btn");
+      musicBtn.addEventListener("click", function () {
+        gameMusic.play();
+      });
+      const GAME_WIDTH = gameContainer.offsetWidth;
+      const GAME_HEIGHT = gameContainer.offsetHeight;
+
+      // 资源
+      const snakeImages = [
+        "../前端图片文件/贪吃蛇-博士.jpg",
+        "../前端图片文件/贪吃蛇-太子.jpg",
+        "../前端图片文件/贪吃蛇-两颗男.jpg",
+      ];
+      const foodImage = "../前端图片文件/周杰伦.webp";
+
+      // 状态
+      // 初始位置严格为50的倍数
+      let snake = [{ x: 250, y: 250 }];
+      let direction = { x: SNAKE_SIZE, y: 0 };
+      let nextDirection = direction;
+      let food = { x: 500, y: 500 };
+      let score = 0;
+      let gameInterval = null;
+      let isPaused = false;
+
+      // 工具函数
+      function createSegment(x, y, image) {
+        const segment = document.createElement("div");
+        segment.classList.add("snake-segment");
+        segment.style.left = `${x}px`;
+        segment.style.top = `${y}px`;
+        segment.style.backgroundImage = `url(${image})`;
+        gameContainer.appendChild(segment);
+      }
+
+      function createFood(x, y) {
+        const foodElement = document.createElement("div");
+        foodElement.classList.add("food");
+        foodElement.style.left = `${x}px`;
+        foodElement.style.top = `${y}px`;
+        foodElement.style.backgroundImage = `url(${foodImage})`;
+        gameContainer.appendChild(foodElement);
+      }
+
+      function randomGridPosition() {
+        // 保证食物位置为50的倍数
+        const maxX = Math.floor((GAME_WIDTH - SNAKE_SIZE) / SNAKE_SIZE);
+        const maxY = Math.floor((GAME_HEIGHT - SNAKE_SIZE) / SNAKE_SIZE);
+        return {
+          x: Math.floor(Math.random() * (maxX + 1)) * SNAKE_SIZE,
+          y: Math.floor(Math.random() * (maxY + 1)) * SNAKE_SIZE,
+        };
+      }
+
+      function updateGame() {
+        if (isPaused) return;
+        // 方向切换（防止反向）
+        direction = nextDirection;
+        // 移动蛇
+        const head = {
+          x: snake[0].x + direction.x,
+          y: snake[0].y + direction.y,
+        };
+        snake.unshift(head);
+
+        // 检查是否吃到食物
+        if (head.x === food.x && head.y === food.y) {
+          score++;
+          scoreElement.textContent = score;
+          food = randomGridPosition();
+        } else {
+          snake.pop();
+        }
+
+        // 检查碰撞
+        if (
+          head.x < 0 ||
+          head.y < 0 ||
+          head.x >= GAME_WIDTH ||
+          head.y >= GAME_HEIGHT ||
+          snake
+            .slice(1)
+            .some((segment) => segment.x === head.x && segment.y === head.y)
+        ) {
+          clearInterval(gameInterval);
+          gameMusic.pause();
+          alert("游戏结束！");
+          window.location.reload();
+          return;
+        }
+
+        // 渲染蛇和食物
+        gameContainer.innerHTML = "";
+        snake.forEach((segment, index) => {
+          createSegment(
+            segment.x,
+            segment.y,
+            snakeImages[index % snakeImages.length]
+          );
+        });
+        createFood(food.x, food.y);
+      }
+
+      // 方向切换，防止反向
+      function changeDirection(event) {
+        const key = event.key || event;
+        if (key === "ArrowUp" && direction.y === 0)
+          nextDirection = { x: 0, y: -SNAKE_SIZE };
+        if (key === "ArrowDown" && direction.y === 0)
+          nextDirection = { x: 0, y: SNAKE_SIZE };
+        if (key === "ArrowLeft" && direction.x === 0)
+          nextDirection = { x: -SNAKE_SIZE, y: 0 };
+        if (key === "ArrowRight" && direction.x === 0)
+          nextDirection = { x: SNAKE_SIZE, y: 0 };
+      }
+
+      // 按钮事件
+      pauseBtn.addEventListener("click", function () {
+        isPaused = true;
+        gameMusic.pause();
+      });
+      resumeBtn.addEventListener("click", function () {
+        if (isPaused) {
+          isPaused = false;
+          gameMusic.play();
+        }
+      });
+
+      // 键盘事件
+      document.addEventListener("keydown", changeDirection);
+
+      // 移动端按钮
+      if (/Mobi|Android|iPhone/i.test(navigator.userAgent)) {
+        mobileControls.style.display = "flex";
+        upBtn.addEventListener("click", () => changeDirection("ArrowUp"));
+        downBtn.addEventListener("click", () => changeDirection("ArrowDown"));
+        leftBtn.addEventListener("click", () => changeDirection("ArrowLeft"));
+        rightBtn.addEventListener("click", () => changeDirection("ArrowRight"));
+      }
+
+      // 游戏启动
+      function startGame() {
+        gameMusic.play();
+        gameInterval = setInterval(updateGame, 200);
+      }
+      // 初始化食物位置
+      food = randomGridPosition();
+      startGame();
+    </script>
+  </body>
+</html>
